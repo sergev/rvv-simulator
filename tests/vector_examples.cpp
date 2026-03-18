@@ -17,7 +17,53 @@
 using namespace ::riscv::v;
 
 namespace {
+
 std::default_random_engine generator(0);
+
+std::vector<int32_t> RandomBufInt32(size_t n, int32_t low = 0, int32_t high = 255) {
+    std::vector<int32_t> buf;
+    buf.reserve(n);
+    std::uniform_int_distribution<int32_t> dist(low, high);
+    auto gen = [&]() { return dist(generator); };
+    std::generate_n(std::back_inserter(buf), n, gen);
+    return buf;
+}
+
+std::vector<int16_t> RandomBufInt16(size_t n, int16_t low = 0, int16_t high = 255) {
+    std::vector<int16_t> buf;
+    buf.reserve(n);
+    std::uniform_int_distribution<int> dist(low, high);
+    auto gen = [&]() { return static_cast<int16_t>(dist(generator)); };
+    std::generate_n(std::back_inserter(buf), n, gen);
+    return buf;
+}
+
+std::vector<int8_t> RandomBufInt8(size_t n, int8_t low = 0, int8_t high = 10) {
+    std::vector<int8_t> buf;
+    buf.reserve(n);
+    std::uniform_int_distribution<int> dist(low, high);
+    auto gen = [&]() { return static_cast<int8_t>(dist(generator)); };
+    std::generate_n(std::back_inserter(buf), n, gen);
+    return buf;
+}
+
+std::vector<char> RandomBufChar(size_t n) {
+    std::vector<char> buf;
+    buf.reserve(n);
+    std::uniform_int_distribution<int> dist(0, 255);
+    auto gen = [&]() { return static_cast<char>(dist(generator)); };
+    std::generate_n(std::back_inserter(buf), n, gen);
+    return buf;
+}
+
+std::vector<float> RandomBufFloat(size_t n, float low, float high) {
+    std::vector<float> buf;
+    buf.reserve(n);
+    std::uniform_real_distribution<float> dist(low, high);
+    auto gen = [&]() { return dist(generator); };
+    std::generate_n(std::back_inserter(buf), n, gen);
+    return buf;
+}
 
 void*
 vvaddint32(size_t n, void * const dest, void const *src_a, void const *src_b)
@@ -318,21 +364,12 @@ sgemm(size_t n, size_t m, size_t k, float const *a, size_t lda, float const *b, 
 
 TEST(VectorExamples, vector_vector_add_example)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<int32_t> buf_type;
-    const size_t buf_size = 128;
-    buf_type in_buf_a;
-    buf_type in_buf_b;
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static auto const gen = []() {return distribution(generator); };
-    std::generate_n(std::back_inserter(in_buf_a), buf_size, gen);
-    std::generate_n(std::back_inserter(in_buf_b), buf_size, gen);
+    std::vector<int32_t> in_buf_a = RandomBufInt32(128);
+    std::vector<int32_t> in_buf_b = RandomBufInt32(128);
+    std::vector<int32_t> out_buf(in_buf_a.size());
+    std::vector<int32_t> ref_buf;
 
-    buf_type out_buf(in_buf_a.size());
-    buf_type ref_buf;
-
-    vvaddint32(buf_size, &out_buf[0], &in_buf_a[0], &in_buf_b[0]);
+    vvaddint32(128, &out_buf[0], &in_buf_a[0], &in_buf_b[0]);
     std::transform(in_buf_a.begin(), in_buf_a.end(), in_buf_b.begin(), std::back_inserter(ref_buf), std::plus<int32_t>());
 
     EXPECT_EQ(ref_buf, out_buf);
@@ -340,24 +377,11 @@ TEST(VectorExamples, vector_vector_add_example)
 
 TEST(VectorExamples, mixed_width_example)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<int32_t> buf_type;
     const size_t buf_size = 128;
-    std::vector<int8_t> a;
-    buf_type b;
-    buf_type c;
-
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static std::uniform_int_distribution<int16_t> distribution_a(0, 10);
-    static auto const gen = []() { return distribution(generator); };
-    static auto const gen_a = []() { return distribution_a(generator); };
-    std::generate_n(std::back_inserter(a), buf_size, gen_a);
-    std::generate_n(std::back_inserter(b), buf_size, gen);
-    std::generate_n(std::back_inserter(c), buf_size, gen);
-
-    buf_type out_buf(buf_size);
-    buf_type ref_buf;
+    std::vector<int8_t> a = RandomBufInt8(buf_size, 0, 10);
+    std::vector<int32_t> b = RandomBufInt32(buf_size);
+    std::vector<int32_t> c = RandomBufInt32(buf_size);
+    std::vector<int32_t> ref_buf;
 
     for (size_t i = 0; i < buf_size; ++i) {
         ref_buf.push_back(a[i] < 5 ? c[i] : 1);
@@ -370,40 +394,21 @@ TEST(VectorExamples, mixed_width_example)
 
 TEST(VectorExamples, memcpy_example)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<char> buf_type;
-    const size_t buf_size = 1024;
-    buf_type in_buf;
-    static std::uniform_int_distribution<int> distribution(0, 255);
-    static auto const gen = []() {return distribution(generator); };
-    std::generate_n(std::back_inserter(in_buf), buf_size, gen);
-
-    buf_type out_buf(in_buf.size());
-    vmemcpy(&out_buf[0], &in_buf[0], in_buf.size() * sizeof(buf_type::value_type));
+    std::vector<char> in_buf = RandomBufChar(1024);
+    std::vector<char> out_buf(in_buf.size());
+    vmemcpy(&out_buf[0], &in_buf[0], in_buf.size() * sizeof(char));
 
     EXPECT_EQ(in_buf, out_buf);
 }
 
 TEST(VectorExamples, conditional_example)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<int16_t> buf_type;
     const size_t buf_size = 128;
-    buf_type a;
-    buf_type b;
-    std::vector<int8_t> x;
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static std::uniform_int_distribution<int16_t> distribution_x(0, 10);
-    static auto const gen = []() { return distribution(generator); };
-    static auto const gen_x = []() { return distribution_x(generator); };
-    std::generate_n(std::back_inserter(x), buf_size, gen_x);
-    std::generate_n(std::back_inserter(a), buf_size, gen);
-    std::generate_n(std::back_inserter(b), buf_size, gen);
-
-    buf_type out_buf(a.size());
-    buf_type ref_buf;
+    std::vector<int8_t> x = RandomBufInt8(buf_size, 0, 10);
+    std::vector<int16_t> a = RandomBufInt16(buf_size);
+    std::vector<int16_t> b = RandomBufInt16(buf_size);
+    std::vector<int16_t> out_buf(buf_size);
+    std::vector<int16_t> ref_buf;
 
     conditional(buf_size, &x[0], &a[0], &b[0], &out_buf[0]);
 
@@ -416,21 +421,12 @@ TEST(VectorExamples, conditional_example)
 
 TEST(VectorExamples, saxpy_example)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<float> buf_type;
     const size_t buf_size = 128;
     float const a = 2.7f;
+    std::vector<float> x = RandomBufFloat(buf_size, 0.f, 255.f);
+    std::vector<float> y = RandomBufFloat(buf_size, 0.f, 255.f);
+    std::vector<float> ref_buf;
 
-    buf_type x;
-    buf_type y;
-
-    static std::uniform_real_distribution<float> distribution(0, 255);
-    static auto const gen = []() { return distribution(generator); };
-    std::generate_n(std::back_inserter(x), buf_size, gen);
-    std::generate_n(std::back_inserter(y), buf_size, gen);
-
-    buf_type ref_buf;
     for (size_t i = 0; i < buf_size; ++i) {
         ref_buf.push_back(a * x[i] + y[i]);
     }
@@ -442,27 +438,14 @@ TEST(VectorExamples, saxpy_example)
 
 TEST(VectorExamples, sgemm_example)
 {
-    using std::begin;
-    using std::end;
-
     const size_t M = 16;
     const size_t K = 16;
     const size_t N = 16;
 
-    typedef std::vector<float> buf_type;
-
-    buf_type a;
-    buf_type b;
-    buf_type c;
-
-    static std::uniform_real_distribution<float> distribution(0, 10);
-    static auto const gen = []() { return distribution(generator); };
-
-    std::generate_n(std::back_inserter(a), M * K, gen);
-    std::generate_n(std::back_inserter(b), K * N, gen);
-    std::generate_n(std::back_inserter(c), M * N, gen);
-
-    buf_type ref_buf(M * N);
+    std::vector<float> a = RandomBufFloat(M * K, 0.f, 10.f);
+    std::vector<float> b = RandomBufFloat(K * N, 0.f, 10.f);
+    std::vector<float> c = RandomBufFloat(M * N, 0.f, 10.f);
+    std::vector<float> ref_buf(M * N);
 
     for (size_t i = 0; i < M; ++i) {
         for (size_t j = 0; j < N; ++j) {
