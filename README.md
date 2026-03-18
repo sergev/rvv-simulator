@@ -5,7 +5,7 @@ RISC-V vector extension v0.7 (base) simulator implemented in C++.
 # Requirements
 
 * CMake >= 3.16
-* Boost >= 1.66
+* Googletest is fetched automatically by CMake (no separate install needed).
 
 # Building
 

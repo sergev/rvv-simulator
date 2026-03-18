@@ -6,13 +6,14 @@
     @brief Vector extension simulator (v0.7) per-instruction tests
 */
 
-#define BOOST_TEST_MODULE basic_ops
-
-#include <boost/test/included/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/data/monomorphic.hpp>
+#include <gtest/gtest.h>
 
 #include "riscv/ext/v.hpp"
+
+#include <algorithm>
+#include <functional>
+#include <random>
+#include <vector>
 
 using namespace ::riscv::v;
 
@@ -114,7 +115,7 @@ sub(void * const dest, void const *src_a, void const *src_b, size_t count)
 }
 }  // namespace
 
-BOOST_AUTO_TEST_CASE(addition)
+TEST(BasicOps, addition)
 {
     using std::begin;
     using std::end;
@@ -133,10 +134,10 @@ BOOST_AUTO_TEST_CASE(addition)
     add<buf_type::value_type>(&out_buf[0], &in_buf_a[0], &in_buf_b[0], in_buf_a.size());
     std::transform(in_buf_a.begin(), in_buf_a.end(), in_buf_b.begin(), std::back_inserter(ref_buf), std::plus<int32_t>());
 
-    BOOST_TEST(ref_buf == out_buf);
+    EXPECT_EQ(ref_buf, out_buf);
 }
 
-BOOST_AUTO_TEST_CASE(addition_scalar)
+TEST(BasicOps, addition_scalar)
 {
     using std::begin;
     using std::end;
@@ -155,10 +156,10 @@ BOOST_AUTO_TEST_CASE(addition_scalar)
     addx<buf_type::value_type>(&out_buf[0], &in_buf_a[0], x, in_buf_a.size());
     std::transform(in_buf_a.begin(), in_buf_a.end(), std::back_inserter(ref_buf), std::bind(std::plus<int32_t>(), ph::_1, x));
 
-    BOOST_TEST(ref_buf == out_buf);
+    EXPECT_EQ(ref_buf, out_buf);
 }
 
-BOOST_AUTO_TEST_CASE(addition_immediate)
+TEST(BasicOps, addition_immediate)
 {
     using std::begin;
     using std::end;
@@ -177,10 +178,10 @@ BOOST_AUTO_TEST_CASE(addition_immediate)
     addi<buf_type::value_type>(&out_buf[0], &in_buf_a[0], imm, in_buf_a.size());
     std::transform(in_buf_a.begin(), in_buf_a.end(), std::back_inserter(ref_buf), std::bind(std::plus<int32_t>(), ph::_1, imm));
 
-    BOOST_TEST(ref_buf == out_buf);
+    EXPECT_EQ(ref_buf, out_buf);
 }
 
-BOOST_AUTO_TEST_CASE(subtraction)
+TEST(BasicOps, subtraction)
 {
     using std::begin;
     using std::end;
@@ -199,5 +200,5 @@ BOOST_AUTO_TEST_CASE(subtraction)
     sub<buf_type::value_type>(&out_buf[0], &in_buf_a[0], &in_buf_b[0], in_buf_a.size());
     std::transform(in_buf_a.begin(), in_buf_a.end(), in_buf_b.begin(), std::back_inserter(ref_buf), std::minus<int32_t>());
 
-    BOOST_TEST(ref_buf == out_buf);
+    EXPECT_EQ(ref_buf, out_buf);
 }

@@ -6,13 +6,13 @@
     @brief RISCV-V Vector extension (v0.7) simulator usage examples and tests
 */
 
-#define BOOST_TEST_MODULE vector_examples
-
-#include <boost/test/included/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/data/monomorphic.hpp>
+#include <gtest/gtest.h>
 
 #include "riscv/ext/v.hpp"
+
+#include <algorithm>
+#include <random>
+#include <vector>
 
 using namespace ::riscv::v;
 
@@ -316,7 +316,7 @@ sgemm(size_t n, size_t m, size_t k, float const *a, size_t lda, float const *b, 
 }
 }  // namespace
 
-BOOST_AUTO_TEST_CASE(vector_vector_add_example)
+TEST(VectorExamples, vector_vector_add_example)
 {
     using std::begin;
     using std::end;
@@ -335,10 +335,10 @@ BOOST_AUTO_TEST_CASE(vector_vector_add_example)
     vvaddint32(buf_size, &out_buf[0], &in_buf_a[0], &in_buf_b[0]);
     std::transform(in_buf_a.begin(), in_buf_a.end(), in_buf_b.begin(), std::back_inserter(ref_buf), std::plus<int32_t>());
 
-    BOOST_TEST(ref_buf == out_buf);
+    EXPECT_EQ(ref_buf, out_buf);
 }
 
-BOOST_AUTO_TEST_CASE(mixed_width_example)
+TEST(VectorExamples, mixed_width_example)
 {
     using std::begin;
     using std::end;
@@ -365,10 +365,10 @@ BOOST_AUTO_TEST_CASE(mixed_width_example)
 
     mixed_width(buf_size, &a[0], &b[0], &c[0]);
 
-    BOOST_TEST(ref_buf == b);
+    EXPECT_EQ(ref_buf, b);
 }
 
-BOOST_AUTO_TEST_CASE(memcpy_example)
+TEST(VectorExamples, memcpy_example)
 {
     using std::begin;
     using std::end;
@@ -382,10 +382,10 @@ BOOST_AUTO_TEST_CASE(memcpy_example)
     buf_type out_buf(in_buf.size());
     vmemcpy(&out_buf[0], &in_buf[0], in_buf.size() * sizeof(buf_type::value_type));
 
-    BOOST_TEST(in_buf == out_buf);
+    EXPECT_EQ(in_buf, out_buf);
 }
 
-BOOST_AUTO_TEST_CASE(conditional_example)
+TEST(VectorExamples, conditional_example)
 {
     using std::begin;
     using std::end;
@@ -411,10 +411,10 @@ BOOST_AUTO_TEST_CASE(conditional_example)
         ref_buf.push_back(x[i] < 5 ? a[i] : b[i]);
     }
 
-    BOOST_TEST(ref_buf == out_buf);
+    EXPECT_EQ(ref_buf, out_buf);
 }
 
-BOOST_AUTO_TEST_CASE(saxpy_example)
+TEST(VectorExamples, saxpy_example)
 {
     using std::begin;
     using std::end;
@@ -437,10 +437,10 @@ BOOST_AUTO_TEST_CASE(saxpy_example)
 
     saxpy(buf_size, a, &x[0], &y[0]);
 
-    BOOST_TEST(ref_buf == y);
+    EXPECT_EQ(ref_buf, y);
 }
 
-BOOST_AUTO_TEST_CASE(sgemm_example)
+TEST(VectorExamples, sgemm_example)
 {
     using std::begin;
     using std::end;
@@ -475,5 +475,5 @@ BOOST_AUTO_TEST_CASE(sgemm_example)
 
     sgemm(N, M, K, &a[0], M, &b[0], K, &c[0], M);
 
-    BOOST_TEST(ref_buf == c);
+    EXPECT_EQ(ref_buf, c);
 }

@@ -1,14 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
 project(rvv-simulator LANGUAGES CXX)
 
-# Prefer BoostConfig over deprecated FindBoost (CMake 4.x).
-if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 NEW)
-endif()
-# Boost is required only for tests (header-only Boost.Test).
-find_package(Boost 1.66 REQUIRED)
-
 enable_testing()
+
+# Googletest for tests (fetched automatically).
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
+set(GTEST_GMOCK_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+list(APPEND CMAKE_MODULE_PATH "${googletest_SOURCE_DIR}/cmake")
+include(GoogleTest)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(RVV_ELEN 64 CACHE STRING "The maximum size of a single vector element in bits")
