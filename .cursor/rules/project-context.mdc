@@ -1,0 +1,33 @@
+---
+description: Project context for rvv-simulator (layout, build, tests, conventions)
+alwaysApply: true
+---
+
+# rvv-simulator project context
+
+Use this when working in this repo so you don't have to re-scan the codebase from scratch.
+
+## What the project is
+
+- RISC-V vector extension (v0.7) simulator in C++.
+- No Boost; tests use Googletest (FetchContent). CMake >= 3.16.
+
+## Layout
+
+- **Headers**: `include/riscv/ext/` (e.g. `v.hpp`).
+- **Core lib**: `src/riscv32/` (e.g. `v.cpp`) → static lib `riscv32`.
+- **vstdlib**: `vstdlib/` → static lib `vstdlib` (memcpy, memset, memmove, etc.); links to `riscv32`.
+- **Tests**: `tests/` — three executables: `unit_tests`, `vector_examples`, `stdlib`. CMake subdirs: `vstdlib/`, `tests/`.
+
+## Build and test
+
+- Configure: `cmake -S . -B build`
+- Build: `cmake --build build`
+- Googletest is fetched automatically (FetchContent). `gtest_discover_tests` is used so CTest sees each `TEST` / `TEST_P` individually.
+- Run tests: `ctest --test-dir build` or run `build/tests/unit_tests`, `build/tests/vector_examples`, `build/tests/stdlib` directly.
+
+## Test conventions
+
+- Three test executables; shared helpers (`RandomBuf`, `RandomBufInt32`, `RandomBufChar`, `kBufSize`, etc.) live in anonymous namespaces in each test file.
+- No fixtures unless tests need real shared state; prefer `TEST(Suite, name)` and helpers over duplicated setup.
+- Prefer deduplication via shared helpers (see `tests/stdlib.cpp`, `tests/unit_tests.cpp`, `tests/vector_examples.cpp`). Avoid adding fixtures that only wrap a single helper.
