@@ -273,9 +273,10 @@ class Good_load
 
         for (size_t i = 0; i < len; ++i) {
             if (mode == vop_type::thread_all || mode == vop_type::masked_in && st.is_enabled(i)) {
+                Element_type const index_val = *reinterpret_cast<Element_type const *>(st.elt_ptr(idx, i));
+                size_t const byte_offset = static_cast<size_t>(index_val) * sizeof(Memory_type);
                 Memory_type *const addr = reinterpret_cast<Memory_type *>(st.elt_ptr(vd, i));
-                size_t const stride = *reinterpret_cast<size_t *>(st.elt_ptr(idx, i));
-                *addr = to_element(*reinterpret_cast<Memory_type const *>(p + stride));
+                *addr = to_element(*reinterpret_cast<Memory_type const *>(p + byte_offset));
             }
         }
     }
@@ -307,8 +308,9 @@ class Saver_impl
 
         for (size_t i = 0; i < len; ++i) {
             if (mode == vop_type::thread_all || mode == vop_type::masked_in && st.is_enabled(i)) {
-                size_t const stride = *reinterpret_cast<size_t *>(st.elt_ptr(idx, i));
-                Memory_type *const addr = reinterpret_cast<Memory_type *>(p + stride);
+                Element_type const index_val = *reinterpret_cast<Element_type const *>(st.elt_ptr(idx, i));
+                size_t const byte_offset = static_cast<size_t>(index_val) * sizeof(Memory_type);
+                Memory_type *const addr = reinterpret_cast<Memory_type *>(p + byte_offset);
                 *addr = *reinterpret_cast<Memory_type *>(st.elt_ptr(vs1, i));
             }
         }
@@ -708,15 +710,15 @@ private:
     void
     vadd_vx(vreg_no vd, vreg_no vs2, xreg_type rs1, vop_type mode = vop_type::thread_all) final
     {
-        using namespace std::placeholders;
-        this->iterate(V_unit::instance(), std::bind(std::plus<Element_type>(), _1, Element_type(rs1)), vd, vs2, mode);
+        auto op = [rs1](Element_type const& x) { return x + Element_type(rs1); };
+        this->iterate(V_unit::instance(), op, vd, vs2, mode);
     }
 
     void
     vadd_vi(vreg_no vd, vreg_no vs2, int16_t imm, vop_type mode = vop_type::thread_all) final
     {
-        using namespace std::placeholders;
-        this->iterate(V_unit::instance(), std::bind(std::plus<Element_type>(), _1, Element_type(imm)), vd, vs2, mode);
+        auto op = [imm](Element_type const& x) { return x + Element_type(imm); };
+        this->iterate(V_unit::instance(), op, vd, vs2, mode);
     }
 
     void
@@ -728,8 +730,8 @@ private:
     void
     vsub_vx(vreg_no vd, vreg_no vs2, xreg_type rs1, vop_type mode = vop_type::thread_all) final
     {
-        using namespace std::placeholders;
-        this->iterate(V_unit::instance(), std::bind(std::minus<Element_type>(), _1, Element_type(rs1)), vd, vs2, mode);
+        auto op = [rs1](Element_type const& x) { return x - Element_type(rs1); };
+        this->iterate(V_unit::instance(), op, vd, vs2, mode);
     }
 
     void
@@ -746,23 +748,15 @@ private:
     void
     vmsle_vx(vreg_no vd, vreg_no vs2, xreg_type rs1, vop_type mode = vop_type::thread_all) final
     {
-        using namespace std::placeholders;
-        this->iterate_vm(V_unit::instance(),
-                         std::bind(std::less_equal<Element_type>(), _1, Element_type(rs1)),
-                         vd,
-                         vs2,
-                         mode);
+        auto op = [rs1](Element_type const& x) { return x <= Element_type(rs1); };
+        this->iterate_vm(V_unit::instance(), op, vd, vs2, mode);
     }
 
     void
     vmsle_vi(vreg_no vd, vreg_no vs2, int16_t imm, vop_type mode = vop_type::thread_all) final
     {
-        using namespace std::placeholders;
-        this->iterate_vm(V_unit::instance(),
-                         std::bind(std::less_equal<Element_type>(), _1, Element_type(imm)),
-                         vd,
-                         vs2,
-                         mode);
+        auto op = [imm](Element_type const& x) { return x <= Element_type(imm); };
+        this->iterate_vm(V_unit::instance(), op, vd, vs2, mode);
     }
 
     void
@@ -814,6 +808,7 @@ private:
     }
 
 #if 0
+    // Will be implemented in the future.
     void vsll(vreg_no vd, vreg_no vs1, vreg_no vs2) final
     {
         this->iterate(sll, vd, vs1, vs2);
@@ -1219,6 +1214,15 @@ private:
     }
 };
 
+class No_op_float_operations
+    : public Float_operations
+{
+    void vfmacc_vf(vreg_no, float, vreg_no, vop_type) final
+    {
+        throw State_not_configured();
+    }
+};
+
 Operations_impl<int8_t> op8;
 Operations_impl<int16_t> op16;
 Operations_impl<int32_t> op32;
@@ -1226,6 +1230,7 @@ Operations_impl<int64_t> op64;
 
 Float_operations_impl<float32_t> fop32;
 Float_operations_impl<float64_t> fop64;
+static No_op_float_operations no_op_fop;
 
 static thread_local std::unique_ptr<State> p_state;
 
@@ -1270,11 +1275,11 @@ private:
         switch(ew) {
             case 0b000:
                 this->m_op_performer = &op8;
-                this->m_fop_performer = nullptr;
+                this->m_fop_performer = &no_op_fop;
                 break;
             case 0b001:
                 this->m_op_performer = &op16;
-                this->m_fop_performer = nullptr;
+                this->m_fop_performer = &no_op_fop;
                 break;
             case 0b010:
                 this->m_op_performer = &op32;
@@ -1283,6 +1288,11 @@ private:
             case 0b011:
                 this->m_op_performer = &op64;
                 this->m_fop_performer = &fop64;
+                break;
+            default:
+                this->m_ill = true;
+                this->m_op_performer = &op32;
+                this->m_fop_performer = &fop32;
                 break;
         }
         this->m_ew = ew;
@@ -1366,21 +1376,8 @@ private:
         size_t mlen = sew() / lmul();
         size_t byte_num = _reg * V_unit::VLEN / 8 + (_ind * mlen) / 8;
         char *byte_ptr = &m_register_file[byte_num];
-
-        // zeroing mlen bits
-        size_t bits_left = mlen;
-        char *ptr = byte_ptr;
-        while (bits_left >= 8) {
-            *ptr = 0;
-            bits_left -= 8;
-            ++ptr;
-        }
-        if (bits_left) {
-            *ptr = *ptr & ~((1 << bits_left) - 1);
-        }
-
-        // set LSB to the value
-        *byte_ptr = *byte_ptr & ~(1u) | !!value;
+        size_t bit_index = (_ind * mlen) % 8;
+        *byte_ptr = static_cast<char>((*byte_ptr & ~(1u << bit_index)) | ((!!value) << bit_index));
     }
 
     bool
@@ -1390,7 +1387,7 @@ private:
         size_t byte_num = _reg * V_unit::VLEN / 8 + (_ind * mlen) / 8;
         char const *byte_ptr = &m_register_file[byte_num];
 
-        return 0 != (*byte_ptr & (1 << (mlen % 8)));
+        return 0 != (*byte_ptr & (1u << ((_ind * mlen) % 8)));
     }
 
     bool
@@ -1460,7 +1457,7 @@ vsetvl(size_t _avl, size_t _vtype)
         implementation::V_unit_impl::init();
     }
 
-    bool const ill = 0 != ((_vtype >> (sizeof(xreg_type) - 1)) && 0b1);
+    bool const ill = (_vtype >> (sizeof(xreg_type) * CHAR_BIT - 1)) != 0;
     size_t mul = 0;
     size_t ew = 0;
     size_t avl = 0;
