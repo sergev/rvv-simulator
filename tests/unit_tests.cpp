@@ -18,7 +18,18 @@
 using namespace ::riscv::v;
 
 namespace {
+
+using buf_type = std::vector<int32_t>;
 std::default_random_engine generator(0);
+
+buf_type RandomBuf(size_t n) {
+    buf_type buf;
+    buf.reserve(n);
+    std::uniform_int_distribution<int32_t> distribution(0, 255);
+    auto gen = [&]() { return distribution(generator); };
+    std::generate_n(std::back_inserter(buf), n, gen);
+    return buf;
+}
 
 template<typename Ty>
 void*
@@ -117,17 +128,8 @@ sub(void * const dest, void const *src_a, void const *src_b, size_t count)
 
 TEST(BasicOps, addition)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<int32_t> buf_type;
-    const size_t buf_size = 16;
-    buf_type in_buf_a;
-    buf_type in_buf_b;
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static auto const gen = []() {return distribution(generator); };
-    std::generate_n(std::back_inserter(in_buf_a), buf_size, gen);
-    std::generate_n(std::back_inserter(in_buf_b), buf_size, gen);
-
+    buf_type in_buf_a = RandomBuf(16);
+    buf_type in_buf_b = RandomBuf(16);
     buf_type out_buf(in_buf_a.size());
     buf_type ref_buf;
 
@@ -139,17 +141,9 @@ TEST(BasicOps, addition)
 
 TEST(BasicOps, addition_scalar)
 {
-    using std::begin;
-    using std::end;
     namespace ph = std::placeholders;
-    typedef std::vector<int32_t> buf_type;
-    size_t const buf_size = 16;
+    buf_type in_buf_a = RandomBuf(16);
     int32_t const x = 127;
-    buf_type in_buf_a;
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static auto const gen = []() {return distribution(generator); };
-    std::generate_n(std::back_inserter(in_buf_a), buf_size, gen);
-
     buf_type out_buf(in_buf_a.size());
     buf_type ref_buf;
 
@@ -161,17 +155,9 @@ TEST(BasicOps, addition_scalar)
 
 TEST(BasicOps, addition_immediate)
 {
-    using std::begin;
-    using std::end;
     namespace ph = std::placeholders;
-    typedef std::vector<int32_t> buf_type;
-    size_t const buf_size = 16;
+    buf_type in_buf_a = RandomBuf(16);
     int16_t const imm = 127;
-    buf_type in_buf_a;
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static auto const gen = []() {return distribution(generator); };
-    std::generate_n(std::back_inserter(in_buf_a), buf_size, gen);
-
     buf_type out_buf(in_buf_a.size());
     buf_type ref_buf;
 
@@ -183,17 +169,8 @@ TEST(BasicOps, addition_immediate)
 
 TEST(BasicOps, subtraction)
 {
-    using std::begin;
-    using std::end;
-    typedef std::vector<int32_t> buf_type;
-    const size_t buf_size = 32;
-    buf_type in_buf_a;
-    buf_type in_buf_b;
-    static std::uniform_int_distribution<buf_type::value_type> distribution(0, 255);
-    static auto const gen = []() {return distribution(generator); };
-    std::generate_n(std::back_inserter(in_buf_a), buf_size, gen);
-    std::generate_n(std::back_inserter(in_buf_b), buf_size, gen);
-
+    buf_type in_buf_a = RandomBuf(32);
+    buf_type in_buf_b = RandomBuf(32);
     buf_type out_buf(in_buf_a.size());
     buf_type ref_buf;
 
