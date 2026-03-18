@@ -1,7 +1,3 @@
-cmake_minimum_required(VERSION 3.0)
-
-project(vstdlib) 
-
 add_library(vstdlib STATIC
     vstdlib.hpp
     memcpy.cpp
@@ -12,5 +8,4 @@ add_library(vstdlib STATIC
 set_target_properties(vstdlib PROPERTIES FOLDER "Libs")
 target_include_directories(vstdlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(vstdlib PUBLIC riscv32)
-
 target_compile_features(vstdlib PUBLIC ${CXX_FEATURES})

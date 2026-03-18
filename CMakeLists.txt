@@ -1,22 +1,15 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.16)
+project(rvv-simulator LANGUAGES CXX)
 
-project(rvv-simulator)
-
-set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.66)
+# Prefer BoostConfig over deprecated FindBoost (CMake 4.x).
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+# Boost is required only for tests (header-only Boost.Test).
+find_package(Boost 1.66 REQUIRED)
 
 enable_testing()
-
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-if (MSVC)
-    add_definitions(
-        -D_SCL_SECURE_NO_WARNINGS
-        -D_USE_MATH_DEFINES
-        -DNOMINMAX
-        )
-    add_compile_options(/bigobj)
-endif(MSVC)
 
 set(RVV_ELEN 64 CACHE STRING "The maximum size of a single vector element in bits")
 set(RVV_VLEN 256 CACHE STRING "The number of bits in a vector register") # VLEN ≥ ELEN
@@ -86,11 +79,18 @@ add_library(riscv32 STATIC
     src/riscv32/v.cpp
     include/riscv/ext/v.hpp
 )
-target_compile_definitions(riscv32 PUBLIC -DRVV_ELEN=${RVV_ELEN} PUBLIC -DRVV_VLEN=${RVV_VLEN} PUBLIC -DRVV_SLEN=${RVV_SLEN})
+target_compile_definitions(riscv32 PUBLIC
+    RVV_ELEN=${RVV_ELEN}
+    RVV_VLEN=${RVV_VLEN}
+    RVV_SLEN=${RVV_SLEN}
+)
 set_target_properties(riscv32 PROPERTIES FOLDER "Libs")
 target_include_directories(riscv32 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(riscv32 Boost::boost)
 target_compile_features(riscv32 PUBLIC ${CXX_FEATURES})
+if(MSVC)
+    target_compile_definitions(riscv32 PRIVATE _SCL_SECURE_NO_WARNINGS _USE_MATH_DEFINES NOMINMAX)
+    target_compile_options(riscv32 PRIVATE /bigobj)
+endif()
 
 add_subdirectory(vstdlib)
 add_subdirectory(tests)
